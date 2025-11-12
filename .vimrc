@@ -3,7 +3,9 @@
 " https://github.com/hadalhw17/vimconf
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-:source $MYVIMRC/../Project.vim
+let g:config_dir = fnamemodify($MYVIMRC, ':p:h')
+let g:plugin_file = g:config_dir . '/Project.vim'
+execute 'source' fnameescape(g:plugin_file)
 
 " -VIMRC MISC------------------------------------------------------------------
   let $VIMHOME = $HOME."/.vim"
@@ -69,7 +71,6 @@
   " Editor
   " Hidden characters
   :set mouse=a
-  :set pastetoggle=<F2>
   :set listchars=tab:▸▸,trail:~,extends:>,precedes:<,space:·
   :syntax enable
   :syntax on
@@ -444,26 +445,7 @@ let g:cmp_widget_border = 'rounded'
   lua <<EOF
   vim.keymap.set('n', 'gd', vim.lsp.buf.definition)
   vim.keymap.set('n', '<leader>cd', function() vim.cmd("cd %:p:h") end)
-
-  -- LSP-ZERO
-  local lsp = require('lsp-zero').preset({
-  name = 'minimal',
-  set_lsp_keymaps = true,
-  manage_nvim_cmp = true,
-  suggest_lsp_servers = false,
-  virtual_text = true
-  })
-
-local cmp = require('cmp')
-
-lsp.setup_nvim_cmp({
-  mapping = lsp.defaults.cmp_mappings({
-  -- Do not capture TAB key!
-    ['<Tab>'] = vim.NIL, 
-  })
-})
-
-  lsp.setup()
+  vim.lsp.enable('clangd')
 
 vim.diagnostic.config({
   -- Use keybinding 'gl' to display diagnostics if this is disabled
@@ -478,14 +460,17 @@ vim.diagnostic.config({
 vim.filetype.add({
   extension = {
     cfx = 'fx',
-    cfi = 'fx'
+    cfi = 'fx',
+    rfx = 'fx',
+    rfi = 'fx',
   }
 })
 
 -- vim.api.nvim_create_autocmd("BufRead,BufNewFile", {
---     pattern = {"*.cfx", "*.cfi"},
+--     pattern = {"*.cfx", "*.cfi", "*.rfi", "*.rfx"},
 --     callback = function()
 --       vim.bo.filetype = "fx"
+--       vim.bo.syntax = "fx"
 --     end,
 -- })
 
