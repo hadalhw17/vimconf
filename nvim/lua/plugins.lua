@@ -107,11 +107,28 @@ return {
     {
         'williamboman/mason.nvim', -- Optional
         config = function()
-            require("mason").setup()
+            require("mason").setup({})
+            require("cmp_nvim_lsp").setup({
+                ensure_installed = {"clangd"},
+            })
             vim.cmd("MasonUpdate")
+            local capabilities = require("cmp_nvim_lsp").default_capabilities()
+            vim.lsp.config('clangd', {
+            	capabilities = capabilities,
+            	cmd = {
+            		"clangd",
+            		"--background-index",
+            		"--clang-tidy",
+            		"--completion-style=detailed",
+				},
+                init_options = {
+                    fallbackFlags = { '-std=c++23' },
+                },
+            });
         end,
         dependencies = {
             'williamboman/mason-lspconfig.nvim',
+    		'hrsh7th/cmp-nvim-lsp',
         },
     },
     'williamboman/mason-lspconfig.nvim', -- optional
@@ -135,16 +152,53 @@ return {
         'nvim-telescope/telescope.nvim',
         branch = '0.1.x',
         keys   = {
-            {"<C-K>g", ":Telescope grep_string<CR>", desc = "Global grep"},
-            {"<C-K>f", ":Telescope find_files<CR>", desc  = "Global file search"},
+            {"<C-K>f", ":Telescope live_grep<CR>", desc = "Global grep"},
+            {"<C-K>g", ":Telescope grep_string<CR>", desc = "Grep under cursor"},
+            {"<C-K>t", ":Telescope find_files<CR>", desc  = "Global file search"},
             {"<C-K>b", ":Telescope buffers<CR>", desc     = "Global buffer search"},
         },
     },
-                 'BurntSushi/ripgrep',
-                         'sharkdp/fd',
-    'nvim-treesitter/nvim-treesitter',
-    --'nvim-tree/nvim-web-devicons'
-    --'ryanoasis/vim-devicons'
+    'BurntSushi/ripgrep',
+    'sharkdp/fd',
+
+    {
+      "mikavilpas/yazi.nvim",
+      event = "VeryLazy",
+      dependencies = { "folke/snacks.nvim", lazy = true },
+      keys = {
+        -- 👇 in this section, choose your own keymappings!
+        {
+          "<leader>-",
+          mode = { "n", "v" },
+          "<cmd>Yazi<cr>",
+          desc = "Open yazi at the current file",
+        },
+        {
+          -- Open in the current working directory
+          "<leader>cw",
+          "<cmd>Yazi cwd<cr>",
+          desc = "Open the file manager in nvim's working directory",
+        },
+        {
+          "<c-up>",
+          "<cmd>Yazi toggle<cr>",
+          desc = "Resume the last yazi session",
+        },
+      },
+      opts = {
+        -- if you want to open yazi instead of netrw, see below for more info
+        open_for_directories = false,
+        keymaps = {
+          show_help = "<f1>",
+        },
+      },
+      -- 👇 if you use `open_for_directories=true`, this is recommended
+      init = function()
+        -- More details: https://github.com/mikavilpas/yazi.nvim/issues/802
+        -- vim.g.loaded_netrw = 1
+        vim.g.loaded_netrwPlugin = 1
+      end,
+    },
 
     --Code aligning------------------
     {
@@ -160,10 +214,11 @@ return {
         dependencies = {
             'vim-airline/vim-airline-themes',
         },
-        lazy = true,
     },
     -- And plugins for it
     'vim-airline/vim-airline-themes',
 
     'https://github.com/tpope/vim-characterize.git',
+
+	'sbdchd/neoformat',
 }
