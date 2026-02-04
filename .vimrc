@@ -10,11 +10,6 @@ execute 'source' fnameescape(g:plugin_file)
 " -VIMRC MISC------------------------------------------------------------------
   let $VIMHOME = $HOME."/.vim"
   let $SWAPDIR = $VIMHOME."/swap//"
-  augroup vimrc
-    autocmd!
-    autocmd BufEnter ~/.vimrc set foldmethod=manual
-    autocmd BufWritePost $MYVIMRC source $MYVIMRC "Automatically source .vimrc when saving it
-    autocmd BufWritePost ~/.vimrc source "~/.vimrc" "Automatically source .vimrc when saving it
 
 " -GLOBAL SETTINGS-------------------------------------------------------------
   set encoding=UTF-8 
@@ -165,7 +160,7 @@ execute 'source' fnameescape(g:plugin_file)
 
   " Buffer access
   nnoremap <tab> :buffer *
-  nnoremap <C-K>h :ClangdSwitchSourceHeader<CR>
+  nnoremap <A-o> :LspClangdSwitchSourceHeader<CR>
 
   " FONT size adjust command
   nnoremap <C-Up> :silent! let &guifont = substitute(&guifont, ':h\zs\d\+', '\=eval(submatch(0)+1)', 'g')<CR>
@@ -176,7 +171,6 @@ execute 'source' fnameescape(g:plugin_file)
   inoremap <expr> <Tab> pumvisible() ? "\<C-n>" : "\<Tab>"
   inoremap <expr> <S-Tab> pumvisible() ? "\<C-p>" : "\<S-Tab>"
 
-  " Toggle completion on/off with F2 key
   nnoremap <F2> :call ToggleCompletion()<CR>
 
   let g:nvimCmpEnabled = v:false
@@ -185,7 +179,14 @@ execute 'source' fnameescape(g:plugin_file)
       lua require('cmp').setup{ enabled = false }
       let g:nvimCmpEnabled = v:false
     else
-      lua require('cmp').setup{ enabled = true }
+      require('cmp').setup({
+      	enabled = true,
+		sources = {
+			{name = "nvim_lsp"},
+			{name = "buffer"},
+			{name = "path"},
+		}),
+      }
       let g:nvimCmpEnabled = v:true
     endif
     call UpdateTitleBar()
@@ -306,19 +307,9 @@ execute 'source' fnameescape(g:plugin_file)
   function! OpenPrefixWindow()
     let currentWindow = winnr()
     if &buftype == "quickfix"
-      "bprev
-      "wincmd w
       wincmd q
     else
       copen
-      wincmd L
-     " only
-     " copen
-     " if (currentWindow == 1)
-     "   wincmd L
-     " else
-     "   wincmd H
-     " endif
     endif
   endfunction
   
@@ -334,7 +325,7 @@ execute 'source' fnameescape(g:plugin_file)
 " -Colorscheme and font--------------------------------------------------------
   colo slate
   :set background=dark
-  set guifont= "FiraCode Nerd Font:h10"
+  :set guifont= "FiraCode Nerd Font:h10"
 
 " -Project file loading--------------------------------------------------------
   let g:project#name = ""
@@ -442,10 +433,78 @@ augroup END
 
 let g:cmp_widget_border = 'rounded'
 "--LUA based configurations----------------------------------------------------
-  lua <<EOF
-  vim.keymap.set('n', 'gd', vim.lsp.buf.definition)
-  vim.keymap.set('n', '<leader>cd', function() vim.cmd("cd %:p:h") end)
-  vim.lsp.enable('clangd')
+lua <<EOF
+
+--Auto reload vimrc
+vim.api.nvim_create_autocmd("BufWritePost", {
+	group = vim.api.nvim_create_augroup("ConfigReloaded", {clear = true}),
+	pattern = vim.env.MYVIMRC .. "," .. vim.env.HOME .. "/.vimrc",
+	callback = function()
+		vim.cmd("source " .. vim.env.MYVIMRC)
+		vim.notify("Autoreloaded " .. vim.env.MYVIMRC, vim.log.levels.INFO)
+	end,
+})
+
+--Toggle completion on/off with F2 key
+local luasnip = require('luasnip')
+local cmp = require('cmp')
+vim.g.nvimCmpEnabled = false
+vim.keymap.set("n", "<F2>", function()
+	print("Toggle autocomplete")
+    if (vim.g.nvimCmpEnabled == true) then
+      cmp.setup{ enabled = false }
+      vim.g.nvimCmpEnabled = false
+    else
+      cmp.setup({
+      	enabled = true,
+		sources = {
+			{name = "nvim_lsp"},
+			{name = "luasnip"},
+			{name = "buffer"},
+			{name = "path"},
+		},
+        mapping = cmp.mapping.preset.insert({
+            ['<C-b>'] = cmp.mapping.scroll_docs(-4),
+            ['<C-f>'] = cmp.mapping.scroll_docs(4),
+            ['<C-Space>'] = cmp.mapping.complete(), -- Manually trigger completion
+            ['<CR>'] = cmp.mapping.confirm({ select = true }), -- Accept completion
+
+            -- Use <Tab> and <S-Tab> to select the next/previous item
+            ['<Tab>'] = cmp.mapping(function(fallback)
+                if cmp.visible() then
+                    cmp.select_next_item(cmp_select)
+                elseif luasnip.expand_or_jumpable() then
+                    luasnip.expand_or_jump()
+                else
+                    fallback()
+                end
+            end, { 'i', 's' }),
+
+            ['<S-Tab>'] = cmp.mapping(function(fallback)
+                if cmp.visible() then
+                    cmp.select_prev_item(cmp_select)
+                elseif luasnip.jumpable(-1) then
+                    luasnip.jump(-1)
+                else
+                    fallback()
+                end
+            end, { 'i', 's' }),
+        }),
+	    snippet = {
+	    	expand = function(args)
+	    		luasnip.lsp_expand(args.body)
+	    	end,
+	    },
+        })
+        vim.g.nvimCmpEnabled = true
+    end
+	vim.cmd("call UpdateTitleBar()")
+end
+)
+
+vim.keymap.set('n', 'gd', vim.lsp.buf.definition)
+vim.keymap.set('n', '<leader>cd', function() vim.cmd("cd %:p:h") end)
+vim.lsp.enable('clangd')
 
 vim.diagnostic.config({
   -- Use keybinding 'gl' to display diagnostics if this is disabled
@@ -459,10 +518,12 @@ vim.diagnostic.config({
 
 vim.filetype.add({
   extension = {
-    cfx = 'fx',
-    cfi = 'fx',
-    rfx = 'fx',
-    rfi = 'fx',
+    cfx  = 'fx',
+    cfi  = 'fx',
+    rfx  = 'fx',
+    rfi  = 'fx',
+    ixx  = "cpp",
+    cppm = "cpp",
   }
 })
 

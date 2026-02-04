@@ -5,6 +5,10 @@ return {
         config = function() require('nerdicons').setup({}) end
     },
 
+	{
+		"kyazdani42/nvim-web-devicons",
+		lazy = false,
+	},
     "adelarsq/vim-emoji-icon-theme",
     -------UNICODE---------
     "chrisbra/unicode.vim",
@@ -70,12 +74,13 @@ return {
     "tpope/vim-dispatch",
     {
         "voldikss/vim-floaterm",
+        lazy = false,
         keys = {
-            { "<C-F7>", ":FloatermNew<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm New" },
-            { "<C-F8>", ":FloatermPrev<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm Prev" },
-            { "<C-F9>", ":FloatermNext<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm Next" },
-            { "<C-F11>", ":FloatermKill<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm Kill" },
-            { "<C-F12>", ":FloatermToggle<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm Toggle" },
+            { "<leader><F7>", ":FloatermNew! cd %:h:p<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm New" },
+            { "<leader><F8>", ":FloatermPrev<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm Prev" },
+            { "<leader><F9>", ":FloatermNext<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm Next" },
+            { "<leader><F11>", ":FloatermKill<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm Kill" },
+            { "<leader><F12>", ":FloatermToggle<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm Toggle" },
         },
         cmd = {
         	"FloatermNew",
@@ -84,16 +89,13 @@ return {
 
         config = function()
         -- Terminal mode keymaps need a special treatment:
-        vim.keymap.set("t", "<C-F7>", "<C-\\><C-n>:FloatermNew<CR>", { silent = true, desc = "Floaterm New" })
-        vim.keymap.set("t", "<C-F8>", "<C-\\><C-n>:FloatermPrev<CR>", { silent = true, desc = "Floaterm Prev" })
-        vim.keymap.set("t", "<C-F9>", "<C-\\><C-n>:FloatermNext<CR>", { silent = true, desc = "Floaterm Next" })
-        vim.keymap.set("t", "<C-F11>", "<C-\\><C-n>:FloatermKill<CR>", { silent = true, desc = "Floaterm Kill" })
-        vim.keymap.set("t", "<C-F12>", "<C-\\><C-n>:FloatermToggle<CR>", { silent = true, desc = "Floaterm Toggle" })
+        vim.keymap.set("t", "<leader><F7>", "<C-\\><C-n>:FloatermNew<CR>", { silent = true, desc = "Floaterm New" })
+        vim.keymap.set("t", "<leader><F8>", "<C-\\><C-n>:FloatermPrev<CR>", { silent = true, desc = "Floaterm Prev" })
+        vim.keymap.set("t", "<leader><F9>", "<C-\\><C-n>:FloatermNext<CR>", { silent = true, desc = "Floaterm Next" })
+        vim.keymap.set("t", "<leader><F11>", "<C-\\><C-n>:FloatermKill<CR>", { silent = true, desc = "Floaterm Kill" })
+        vim.keymap.set("t", "<leader><F12>", "<C-\\><C-n>:FloatermToggle<CR>", { silent = true, desc = "Floaterm Toggle" })
         end,
     },
-
-    -- NETMAN -----------------------
-    "miversen33/netman.nvim",
 
     --BBye ------------------------
     {
@@ -115,11 +117,13 @@ return {
             local capabilities = require("cmp_nvim_lsp").default_capabilities()
             vim.lsp.config('clangd', {
             	capabilities = capabilities,
+            	filetypes = {"c", "cpp", "cc", "ixx", "cppm", "h", "hpp", "inl"},
             	cmd = {
             		"clangd",
             		"--background-index",
             		"--clang-tidy",
             		"--completion-style=detailed",
+            		"--experimental-modules-support",
 				},
                 init_options = {
                     fallbackFlags = { '-std=c++23' },
@@ -132,6 +136,80 @@ return {
         },
     },
     'williamboman/mason-lspconfig.nvim', -- optional
+    --CMake-------------------------
+    {
+    	'Civitasv/cmake-tools.nvim',
+    	config = function()
+    		require("cmake-tools").setup({
+    			cmake_command = "cmake",
+    			ctest_command = "ctest",
+    			cmake_build_directory = function()
+    				return "solutions"
+				end,
+				cmake_compile_commands_options = {
+					action = "lsp",
+				},
+				cmake_dap_configuration = {
+					name    = "cpp",
+					type    = "codelldb",
+					request = "launch",
+					stopOnEntry = false,
+					runInTerminal = true,
+					console = "integratedTerminal",
+				},
+    		})
+		end,
+	},
+	--Debugger---------------------
+	{
+		'mfussenegger/nvim-dap',
+		config = function()
+			local dap = require('dap')
+            dap.adapters.codelldb = {
+                  type = "server",
+                  port = "${port}",
+                  executable = {
+                      command = "codelldb", -- I installed codelldb through mason.nvim
+                      args = {"--port", "${port}"},
+                  },
+            }
+             dap.configurations.cpp = {
+               {
+                 name = "Launch",
+                 type = "codelldb",
+                 request = "launch",
+                 program = function()
+                   return vim.fn.input('Path to executable: ', vim.fn.getcwd() .. '/', 'file')
+                 end,
+                 cwd = '${workspaceFolder}',
+                 stopOnEntry = false,
+                 args = {}
+               }
+             }
+		end,
+	},
+
+	{
+		"rcarriga/nvim-dap-ui",
+		dependencies = {"mfussenegger/nvim-dap", "nvim-neotest/nvim-nio"},
+		config = function()
+			local dap, dapui = require("dap"), require("dapui")
+			dapui.setup()
+			dap.listeners.before.attach.dapui_config = function()
+				dapui.open()
+			end
+			dap.listeners.before.launch.dapui_config = function()
+				dapui.open()
+			end
+			dap.listeners.before.event_terminated.dapui_config = function()
+				dapui.close()
+			end
+			dap.listeners.before.event_exited.dapui_config = function()
+				dapui.close()
+			end
+		end,
+	},
+
 
     --Autocompletion---------------
     "hrsh7th/nvim-cmp",
@@ -221,4 +299,73 @@ return {
     'https://github.com/tpope/vim-characterize.git',
 
 	'sbdchd/neoformat',
+    {
+        "allaman/emoji.nvim",
+        lazy = false,
+        version = "1.0.0", -- optionally pin to a tag
+        dependencies = {
+            -- util for handling paths
+            "nvim-lua/plenary.nvim",
+            -- optional for nvim-cmp integration
+            "hrsh7th/nvim-cmp",
+            -- optional for telescope integration
+            "nvim-telescope/telescope.nvim",
+            -- optional for fzf-lua integration via vim.ui.select
+            "ibhagwan/fzf-lua",
+        },
+        opts = {
+            -- default is false, also needed for blink.cmp integration!
+            enable_cmp_integration = true,
+            -- optional if your plugin installation directory
+            -- is not vim.fn.stdpath("data") .. "/lazy/
+            plugin_path = vim.fn.expand("$HOME/.local/share/nvim/lazy/"),
+        },
+        config = function(_, opts)
+            require("emoji").setup(opts)
+            -- optional for telescope integration
+            local ts = require('telescope').load_extension 'emoji'
+            vim.keymap.set('n', '<C-k>e', ts.emoji, { desc = '[S]earch [E]moji' })
+        end,
+    },
+{
+    'olimorris/codecompanion.nvim',
+    dependencies = {
+      'nvim-lua/plenary.nvim',
+    },
+    opts = {
+      strategies = {
+        -- Change the default chat adapter
+        chat = {
+          adapter = 'qwen',
+          inline = 'qwen',
+        },
+      },
+      adapters = {
+		  http = {
+            qwen = function()
+              return require('codecompanion.adapters').extend('ollama', {
+                name = 'qwen', -- Give this adapter a different name to differentiate it from the default ollama adapter
+                schema = {
+                  model = {
+                    default = 'llama3',
+                  },
+                },
+              })
+            end,
+		},
+      },
+      opts = {
+        log_level = 'DEBUG',
+      },
+      display = {
+        diff = {
+          enabled = true,
+          close_chat_at = 240, -- Close an open chat buffer if the total columns of your display are less than...
+          layout = 'vertical', -- vertical|horizontal split for default provider
+          opts = { 'internal', 'filler', 'closeoff', 'algorithm:patience', 'followwrap', 'linematch:120' },
+          provider = 'default', -- default|mini_diff
+        },
+      },
+    },
+  },
 }
