@@ -129,6 +129,10 @@ return {
                     fallbackFlags = { '-std=c++23' },
                 },
             });
+            vim.lsp.config('csharp-language-server', {
+            	capabilities = capabilities,
+            	filetypes = {"cs"},
+            })
         end,
         dependencies = {
             'williamboman/mason-lspconfig.nvim',
@@ -298,8 +302,59 @@ return {
 
     'https://github.com/tpope/vim-characterize.git',
 
+	'sindrets/diffview.nvim',
+
+	'tpope/vim-fugitive',
+
+	{
+		"pwntester/octo.nvim",
+		cmd = "Octo",
+		opts = {
+			-- or "fzf-lua" or "snacks" or "default"
+			picker = "telescope",
+			-- bare Octo command opens picker of commands
+			enable_builtin = true,
+		},
+		keys = {
+			{
+				"<leader>oi",
+				"<CMD>Octo issue list<CR>",
+				desc = "List GitHub Issues",
+			},
+			{
+				"<leader>op",
+				"<CMD>Octo pr list<CR>",
+				desc = "List GitHub PullRequests",
+			},
+			{
+				"<leader>od",
+				"<CMD>Octo discussion list<CR>",
+				desc = "List GitHub Discussions",
+			},
+			{
+				"<leader>on",
+				"<CMD>Octo notification list<CR>",
+				desc = "List GitHub Notifications",
+			},
+			{
+				"<leader>os",
+				function()
+					require("octo.utils").create_base_search_command { include_current_repo = true }
+				end,
+				desc = "Search GitHub",
+			},
+		},
+		dependencies = {
+			"nvim-lua/plenary.nvim",
+			"nvim-telescope/telescope.nvim",
+			-- OR "ibhagwan/fzf-lua",
+			-- OR "folke/snacks.nvim",
+			"nvim-tree/nvim-web-devicons", -- optional if file_panel.icons is a function
+		},
+	},
+
 	'sbdchd/neoformat',
-    {
+	{
         "allaman/emoji.nvim",
         lazy = false,
         version = "1.0.0", -- optionally pin to a tag
@@ -308,64 +363,72 @@ return {
             "nvim-lua/plenary.nvim",
             -- optional for nvim-cmp integration
             "hrsh7th/nvim-cmp",
-            -- optional for telescope integration
-            "nvim-telescope/telescope.nvim",
-            -- optional for fzf-lua integration via vim.ui.select
-            "ibhagwan/fzf-lua",
-        },
-        opts = {
-            -- default is false, also needed for blink.cmp integration!
-            enable_cmp_integration = true,
-            -- optional if your plugin installation directory
-            -- is not vim.fn.stdpath("data") .. "/lazy/
-            plugin_path = vim.fn.expand("$HOME/.local/share/nvim/lazy/"),
-        },
-        config = function(_, opts)
-            require("emoji").setup(opts)
-            -- optional for telescope integration
-            local ts = require('telescope').load_extension 'emoji'
-            vim.keymap.set('n', '<C-k>e', ts.emoji, { desc = '[S]earch [E]moji' })
-        end,
-    },
-{
-    'olimorris/codecompanion.nvim',
-    dependencies = {
-      'nvim-lua/plenary.nvim',
-    },
-    opts = {
-      strategies = {
-        -- Change the default chat adapter
-        chat = {
-          adapter = 'qwen',
-          inline = 'qwen',
-        },
-      },
-      adapters = {
-		  http = {
-            qwen = function()
-              return require('codecompanion.adapters').extend('ollama', {
-                name = 'qwen', -- Give this adapter a different name to differentiate it from the default ollama adapter
-                schema = {
-                  model = {
-                    default = 'llama3',
-                  },
-                },
-              })
-            end,
+			-- optional for telescope integration
+			"nvim-telescope/telescope.nvim",
+			-- optional for fzf-lua integration via vim.ui.select
+			"ibhagwan/fzf-lua",
 		},
-      },
-      opts = {
-        log_level = 'DEBUG',
-      },
-      display = {
-        diff = {
-          enabled = true,
-          close_chat_at = 240, -- Close an open chat buffer if the total columns of your display are less than...
-          layout = 'vertical', -- vertical|horizontal split for default provider
-          opts = { 'internal', 'filler', 'closeoff', 'algorithm:patience', 'followwrap', 'linematch:120' },
-          provider = 'default', -- default|mini_diff
-        },
-      },
-    },
-  },
+		opts = {
+			-- default is false, also needed for blink.cmp integration!
+			enable_cmp_integration = true,
+		},
+		config = function(_, opts)
+			require("emoji").setup(opts)
+			-- optional for telescope integration
+			local ts = require('telescope').load_extension 'emoji'
+			vim.keymap.set('n', '<C-k>e', ts.emoji, { desc = '[S]earch [E]moji' })
+		end,
+	},
+	{
+		'olimorris/codecompanion.nvim',
+		dependencies = {
+			'nvim-lua/plenary.nvim',
+		},
+		opts = {
+			strategies = {
+				-- Change the default chat adapter
+				chat = {
+					adapter = 'qwen',
+					inline = 'qwen',
+				},
+			},
+			adapters = {
+				http = {
+					qwen = function()
+						return require('codecompanion.adapters').extend('ollama', {
+							name = 'qwen', -- Give this adapter a different name to differentiate it from the default ollama adapter
+							schema = {
+								model = {
+									default = 'llama3',
+								},
+							},
+						})
+					end,
+				},
+			},
+			opts = {
+				log_level = 'DEBUG',
+			},
+			display = {
+				diff = {
+					enabled = true,
+					close_chat_at = 240, -- Close an open chat buffer if the total columns of your display are less than...
+					layout = 'vertical', -- vertical|horizontal split for default provider
+					opts = { 'internal', 'filler', 'closeoff', 'algorithm:patience', 'followwrap', 'linematch:120' },
+					provider = 'default', -- default|mini_diff
+				},
+			},
+		},
+	},
+
+	{
+		'MeanderingProgrammer/render-markdown.nvim',
+		dependencies = { 'nvim-treesitter/nvim-treesitter', 'nvim-mini/mini.nvim' },            -- if you use the mini.nvim suite
+		-- dependencies = { 'nvim-treesitter/nvim-treesitter', 'nvim-mini/mini.icons' },        -- if you use standalone mini plugins
+		-- dependencies = { 'nvim-treesitter/nvim-treesitter', 'nvim-tree/nvim-web-devicons' }, -- if you prefer nvim-web-devicons
+		---@module 'render-markdown'
+		---@type render.md.UserConfig
+		opts = {},
+	},
+
 }

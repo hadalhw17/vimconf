@@ -198,14 +198,16 @@ execute 'source' fnameescape(g:plugin_file)
   let g:nvimPrevCMPEnabledValue = g:nvimCmpEnabled
   function! ToggleLSP()
     if g:nvimLSPEnabled
-      :LspStop
+      :lsp disable
       let g:nvimLSPEnabled = v:false
       let g:nvimPrevCMPEnabledValue = g:nvimCmpEnabled 
       let g:nvimCmpEnabled = v:false
+      echo("LSP Disabled")
     else
-      :LspStart
+      :lsp enable
       let g:nvimLSPEnabled = v:true
       let g:nvimCmpEnabled = g:nvimPrevCMPEnabledValue
+      echo("LSP Enabled")
     endif
     call UpdateTitleBar()
   endfunction
