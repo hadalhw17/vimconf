@@ -30,18 +30,18 @@ execute 'source' fnameescape(g:plugin_file)
   set textwidth=80            "Maximum characters before wrapping
   set wrap                    "Wrap line after textwidth characters
   set hlsearch                "Highlight search matches
-  set listchars=tab:»·,nbsp:+,trail:·,extends:→,precedes:←
+  set listchars=tab:»·,trail:·,extends:→,precedes:←,nbsp:+,space:·
   set autoindent
   set smartindent
   set ignorecase
   set smartcase
   set cindent
-  set laststatus=2						"Always show status bar
+  set laststatus=3						"Single global status line (lualine)
   set cursorline              "Enable highlighting the cursor line
-  set statusline=%<%f\ %h%m%r%=%-14.(%l,%c%V%)\ %P\ %y\ %(\ %m%)\ %{&ft}\ \ %l:\ %L,\ col:%c\ %s
 
   lua require("config.lazy")
   lua require("config.lsp")
+  lua require("config.ui")
 
   hi default CursorWord cterm=underline gui=underline
 
@@ -51,8 +51,6 @@ execute 'source' fnameescape(g:plugin_file)
   " Display options
   :set showmode
   :set showcmd
-  " Set status line display
-  :set statusline=%F%m%r%h%w\ [TYPE=%Y]\ [POS=%l,%v][%p%%]\ [BUFFER=%n]\ %{strftime('%c')}
 
   " Indentation
   :set autoindent
@@ -66,14 +64,12 @@ execute 'source' fnameescape(g:plugin_file)
   " Editor
   " Hidden characters
   :set mouse=a
-  :set listchars=tab:▸▸,trail:~,extends:>,precedes:<,space:·
   :syntax enable
   :syntax on
   :set noerrorbells
   :set visualbell
   :set ruler
   :set wildmenu
-  :set laststatus=2
   :set hidden
   :set formatoptions-=cro
   " Highlight matching pairs of brackets. Use the '%' character to jump between them.
@@ -289,7 +285,7 @@ execute 'source' fnameescape(g:plugin_file)
   silent command! Todo call ExtractTodo()
 
 " -Colorscheme and font--------------------------------------------------------
-  colo slate
+  colo kanso-ink
   :set background=dark
   :set guifont=FiraCode\ Nerd\ Font:h10
 

@@ -1,4 +1,30 @@
 return {
+    --Colorscheme-------------------
+    {
+        'webhooked/kanso.nvim',
+        lazy = false,
+        priority = 1000,
+    },
+
+    --Treesitter--------------------
+    {
+        'nvim-treesitter/nvim-treesitter',
+        branch = 'main',
+        build = ':TSUpdate',
+        lazy = false,
+        config = function()
+            require('nvim-treesitter').install({ 'c', 'cpp', 'c_sharp', 'lua' })
+            -- On the main branch, highlighting is opt-in per filetype
+            vim.api.nvim_create_autocmd('FileType', {
+                group = vim.api.nvim_create_augroup('TreesitterStart', { clear = true }),
+                pattern = { 'c', 'cpp', 'cs', 'lua' },
+                callback = function()
+                    pcall(vim.treesitter.start)
+                end,
+            })
+        end,
+    },
+
     {
         'glepnir/nerdicons.nvim',
         cmd = 'NerdIcons',
@@ -9,7 +35,6 @@ return {
 		"kyazdani42/nvim-web-devicons",
 		lazy = false,
 	},
-    "adelarsq/vim-emoji-icon-theme",
     -------UNICODE---------
     "chrisbra/unicode.vim",
     ------CURSOR WORD------
@@ -166,10 +191,12 @@ return {
             },
         },
         keys   = {
+            {"<C-K>r", ":Telescope resume<CR>", desc = "Resume previous"},
             {"<C-K>f", ":Telescope live_grep<CR>", desc = "Global grep"},
             {"<C-K>g", ":Telescope grep_string<CR>", desc = "Grep under cursor"},
             {"<C-K>t", ":Telescope find_files<CR>", desc  = "Global file search"},
             {"<C-K>b", ":Telescope buffers<CR>", desc     = "Global buffer search"},
+            {"<C-K>s", ":Telescope lsp_dynamic_workspace_symbols<CR>", desc = "Code symbol search"},
         },
         config = function()
             local telescope = require('telescope')
@@ -235,6 +262,27 @@ return {
             end)
           end,
         },
+        notifier = { enabled = true },
+        indent = { enabled = true },
+        input = { enabled = true },
+        dashboard = {
+          enabled = true,
+          sections = {
+            { section = "header" },
+            { section = "keys", gap = 1, padding = 1 },
+            {
+              icon = " ",
+              title = "Recent Files (project)",
+              section = "recent_files",
+              -- Scope to the git root when there is one, else the cwd.
+              -- History comes from shada; nothing is written into the worktree.
+              cwd = vim.fs.root(vim.fn.getcwd(), ".git") or true,
+              indent = 2,
+              padding = 1,
+            },
+            { section = "startup" },
+          },
+        },
       },
     },
 
@@ -293,15 +341,12 @@ return {
         },
         lazy = true,
     },
-    -- Replacement for standard status line
+    -- Statusline
     {
-        'vim-airline/vim-airline',
-        dependencies = {
-            'vim-airline/vim-airline-themes',
-        },
+        'nvim-lualine/lualine.nvim',
+        dependencies = { 'nvim-tree/nvim-web-devicons' },
+        opts = {},
     },
-    -- And plugins for it
-    'vim-airline/vim-airline-themes',
 
     'https://github.com/tpope/vim-characterize.git',
 
