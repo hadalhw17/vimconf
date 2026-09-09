@@ -1,7 +1,9 @@
--- Visual settings. The colorscheme itself is set in .vimrc (colo kanso-ink);
--- plugin specs live in lua/plugins.lua.
+-- Visual settings. Plugin specs live in lua/plugins.lua; this module runs
+-- after config.lazy, so the colorscheme plugin is available here.
 
 vim.o.termguicolors = true
+vim.o.background = "dark"
+vim.cmd.colorscheme("kanso-ink")
 
 -- Highlight only the number of the cursor line, not the whole line
 vim.o.cursorlineopt = "number"

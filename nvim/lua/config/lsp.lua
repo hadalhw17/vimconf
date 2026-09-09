@@ -60,7 +60,7 @@ vim.keymap.set("n", "<A-o>", "<Cmd>LspClangdSwitchSourceHeader<CR>", { desc = "S
 vim.keymap.set("n", "<F2>", function()
 	vim.g.nvimCmpEnabled = not vim.g.nvimCmpEnabled
 	print(vim.g.nvimCmpEnabled and "Autocomplete enabled" or "Autocomplete disabled")
-	vim.fn.UpdateTitleBar()
+	require("config.project").update_titlebar()
 end, { desc = "Toggle autocompletion" })
 
 -- Remember whether completion was on so re-enabling LSP restores it.
@@ -79,5 +79,5 @@ vim.keymap.set("n", "<F3>", function()
 		vim.g.nvimCmpEnabled = cmp_enabled_before_lsp_off
 		print("LSP Enabled")
 	end
-	vim.fn.UpdateTitleBar()
+	require("config.project").update_titlebar()
 end, { desc = "Toggle LSP" })
