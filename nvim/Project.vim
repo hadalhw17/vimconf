@@ -12,7 +12,8 @@ if (filereadable(g:vimprj#projectFile))
     call add(g:vimprj#project, project)
   endfor
 endif
-call sort(g:vimprj#project)
+" Entries are dicts, so sort needs an explicit compare function
+call sort(g:vimprj#project, {a, b -> a.name ==# b.name ? 0 : a.name ># b.name ? 1 : -1})
 
 function! Project(name, shouldSplit)
   for p in g:vimprj#project

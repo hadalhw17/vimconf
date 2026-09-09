@@ -36,12 +36,12 @@ execute 'source' fnameescape(g:plugin_file)
   set ignorecase
   set smartcase
   set cindent
-  set exrc                    "Enable per directory .exrc file
   set laststatus=2						"Always show status bar
   set cursorline              "Enable highlighting the cursor line
   set statusline=%<%f\ %h%m%r%=%-14.(%l,%c%V%)\ %P\ %y\ %(\ %m%)\ %{&ft}\ \ %l:\ %L,\ col:%c\ %s
 
   lua require("config.lazy")
+  lua require("config.lsp")
 
   hi default CursorWord cterm=underline gui=underline
 
@@ -123,14 +123,17 @@ execute 'source' fnameescape(g:plugin_file)
 " -Keybindings-----------------------------------------------------------------
 " Quickly edit/reload the vimrc file
   nmap <silent> <leader>ev :vsp ~/.vimrc<CR>
-  nmap <silent> <leader>sv :so "~/.vimrc"<CR>
+  nmap <silent> <leader>sv :so $MYVIMRC<CR>
 
   " Search hotkeys
   nmap <leader>gf :vimgrep /<c-r>=expand("<cword>")<cr>/../*/*<CR> /<c-r>=expand("<cword>")<cr><CR><s-n>
   nmap <leader>n :cnext<CR>
-  map <leader>l :set list!<CR> " Toggle tabs and EOL
 
-  nmap <c-s> :update<cr> " Save with C-s
+  " Toggle tabs and EOL
+  map <leader>l :set list!<CR>
+
+  " Save with C-s
+  nmap <c-s> :update<cr>
   nnoremap <esc> :nohlsearch<cr>
   " TEXT SELECTION WITH ARROWS
   nmap <S-Up> v<Up>
@@ -160,57 +163,15 @@ execute 'source' fnameescape(g:plugin_file)
 
   " Buffer access
   nnoremap <tab> :buffer *
-  nnoremap <A-o> :LspClangdSwitchSourceHeader<CR>
 
   " FONT size adjust command
   nnoremap <C-Up> :silent! let &guifont = substitute(&guifont, ':h\zs\d\+', '\=eval(submatch(0)+1)', 'g')<CR>
   nnoremap <C-Down> :silent! let &guifont = substitute(&guifont, ':h\zs\d\+', '\=eval(submatch(0)-1)', 'g')<CR>
 
-  " Autocomplete with TAB instead of Enter
-  set completeopt=menu,menuone
+  " Autocomplete with TAB instead of Enter (native menu only;
+  " nvim-cmp, LSP and the F2/F3 toggles live in lua/config/lsp.lua)
   inoremap <expr> <Tab> pumvisible() ? "\<C-n>" : "\<Tab>"
   inoremap <expr> <S-Tab> pumvisible() ? "\<C-p>" : "\<S-Tab>"
-
-  nnoremap <F2> :call ToggleCompletion()<CR>
-
-  let g:nvimCmpEnabled = v:false
-  function! ToggleCompletion()
-    if g:nvimCmpEnabled
-      lua require('cmp').setup{ enabled = false }
-      let g:nvimCmpEnabled = v:false
-    else
-      require('cmp').setup({
-      	enabled = true,
-		sources = {
-			{name = "nvim_lsp"},
-			{name = "buffer"},
-			{name = "path"},
-		}),
-      }
-      let g:nvimCmpEnabled = v:true
-    endif
-    call UpdateTitleBar()
-  endfunction
-
-  " Toggle LSP on/off with F3 key
-  nnoremap <F3> :call ToggleLSP()<CR>
-  let g:nvimLSPEnabled = v:false
-  let g:nvimPrevCMPEnabledValue = g:nvimCmpEnabled
-  function! ToggleLSP()
-    if g:nvimLSPEnabled
-      :lsp disable
-      let g:nvimLSPEnabled = v:false
-      let g:nvimPrevCMPEnabledValue = g:nvimCmpEnabled 
-      let g:nvimCmpEnabled = v:false
-      echo("LSP Disabled")
-    else
-      :lsp enable
-      let g:nvimLSPEnabled = v:true
-      let g:nvimCmpEnabled = g:nvimPrevCMPEnabledValue
-      echo("LSP Enabled")
-    endif
-    call UpdateTitleBar()
-  endfunction
 
 " -Folding---------------------------------------------------------------------
   " https://coderwall.com/p/usd_cw/a-pretty-vim-foldtext-function
@@ -298,8 +259,7 @@ execute 'source' fnameescape(g:plugin_file)
   set errorformat+=\\\ %#%f(%l)\ :\ %#%t%[A-z]%#\ %m
   set errorformat+=,%f:\ error\ %s:%m
   set errorformat+=,%f:\ fatal\ error\ %s:%m
-  autocmd VimResized * :wincmd =
-  
+
   " Rebuild
   nmap <F9> :silent call Build()<cr>
   nmap <F10> :silent call Rebuild()<cr>
@@ -315,7 +275,11 @@ execute 'source' fnameescape(g:plugin_file)
     endif
   endfunction
   
-  au QuickFixCmdPost * :call OpenPrefixWindow()
+  augroup buildwindows
+    autocmd!
+    autocmd VimResized * :wincmd =
+    autocmd QuickFixCmdPost * :call OpenPrefixWindow()
+  augroup END
 
 " -TODO extraction-------------------------------------------------------------
   function! ExtractTodo()
@@ -327,7 +291,7 @@ execute 'source' fnameescape(g:plugin_file)
 " -Colorscheme and font--------------------------------------------------------
   colo slate
   :set background=dark
-  :set guifont= "FiraCode Nerd Font:h10"
+  :set guifont=FiraCode\ Nerd\ Font:h10
 
 " -Project file loading--------------------------------------------------------
   let g:project#name = ""
@@ -350,7 +314,7 @@ execute 'source' fnameescape(g:plugin_file)
       let icon = iconList[&filetype]
     endif
 
-    let l:fileName = expand("%t")
+    let l:fileName = expand("%:t")
     if len(l:fileName) == 0
       let l:fileName = &filetype
     endif
@@ -440,83 +404,35 @@ lua <<EOF
 --Auto reload vimrc
 vim.api.nvim_create_autocmd("BufWritePost", {
 	group = vim.api.nvim_create_augroup("ConfigReloaded", {clear = true}),
-	pattern = vim.env.MYVIMRC .. "," .. vim.env.HOME .. "/.vimrc",
+	-- Backslash is an escape char in autocmd patterns, so normalize paths to /
+	pattern = {
+		vim.fs.normalize(vim.env.MYVIMRC),
+		vim.fs.normalize(vim.env.HOME .. "/.vimrc"),
+	},
 	callback = function()
 		vim.cmd("source " .. vim.env.MYVIMRC)
 		vim.notify("Autoreloaded " .. vim.env.MYVIMRC, vim.log.levels.INFO)
 	end,
 })
 
---Toggle completion on/off with F2 key
-local luasnip = require('luasnip')
-local cmp = require('cmp')
-vim.g.nvimCmpEnabled = false
-vim.keymap.set("n", "<F2>", function()
-	print("Toggle autocomplete")
-    if (vim.g.nvimCmpEnabled == true) then
-      cmp.setup{ enabled = false }
-      vim.g.nvimCmpEnabled = false
-    else
-      cmp.setup({
-      	enabled = true,
-		sources = {
-			{name = "nvim_lsp"},
-			{name = "luasnip"},
-			{name = "buffer"},
-			{name = "path"},
-		},
-        mapping = cmp.mapping.preset.insert({
-            ['<C-b>'] = cmp.mapping.scroll_docs(-4),
-            ['<C-f>'] = cmp.mapping.scroll_docs(4),
-            ['<C-Space>'] = cmp.mapping.complete(), -- Manually trigger completion
-            ['<CR>'] = cmp.mapping.confirm({ select = true }), -- Accept completion
-
-            -- Use <Tab> and <S-Tab> to select the next/previous item
-            ['<Tab>'] = cmp.mapping(function(fallback)
-                if cmp.visible() then
-                    cmp.select_next_item(cmp_select)
-                elseif luasnip.expand_or_jumpable() then
-                    luasnip.expand_or_jump()
-                else
-                    fallback()
-                end
-            end, { 'i', 's' }),
-
-            ['<S-Tab>'] = cmp.mapping(function(fallback)
-                if cmp.visible() then
-                    cmp.select_prev_item(cmp_select)
-                elseif luasnip.jumpable(-1) then
-                    luasnip.jump(-1)
-                else
-                    fallback()
-                end
-            end, { 'i', 's' }),
-        }),
-	    snippet = {
-	    	expand = function(args)
-	    		luasnip.lsp_expand(args.body)
-	    	end,
-	    },
-        })
-        vim.g.nvimCmpEnabled = true
-    end
-	vim.cmd("call UpdateTitleBar()")
-end
-)
-
-vim.keymap.set('n', 'gd', vim.lsp.buf.definition)
 vim.keymap.set('n', '<leader>cd', function() vim.cmd("cd %:p:h") end)
-vim.lsp.enable('clangd')
 
-vim.diagnostic.config({
-  -- Use keybinding 'gl' to display diagnostics if this is disabled
-  virtual_text = false, 
-  signs = true,
-  update_in_insert = false,
-  underline = true,
-  severity_sort = false,
-  float = true,
-})
+-- Split minified JSON into readable lines; nvim is line-oriented, so many
+-- short lines render fast while one huge line does not
+vim.api.nvim_create_user_command("JsonPretty", function()
+	local tool = vim.fn.executable("jq") == 1 and { "jq", "." } or { "python", "-m", "json.tool" }
+	local text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+	local res = vim.system(tool, { stdin = text, text = true }):wait()
+	if res.code ~= 0 then
+		vim.notify("JsonPretty failed: " .. (res.stderr or ""), vim.log.levels.ERROR)
+		return
+	end
+	local lines = vim.split(res.stdout, "\n")
+	if lines[#lines] == "" then
+		table.remove(lines)
+	end
+	vim.api.nvim_buf_set_lines(0, 0, -1, false, lines)
+end, {})
 
 vim.filetype.add({
   extension = {

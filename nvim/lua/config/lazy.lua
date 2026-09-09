@@ -36,4 +36,10 @@ require("lazy").setup({
     enabled = true,
     notify = false,
   },
+  performance = {
+    rtp = {
+      -- lazy's rtp reset would drop the site dir, where treesitter parsers install
+      paths = { vim.fn.stdpath("data") .. "/site" },
+    },
+  },
 })

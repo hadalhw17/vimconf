@@ -22,79 +22,24 @@ return {
         end
     },
 
-    -- Vimproc to asynchronously run commands (NeoBundle, Unite)
-    {
-        'Shougo/vimproc',
-        build = function()
-            local platform = vim.loop.os_uname().sysname
-            if platform == "Darwin" then
-                vim.fn.system("make -f make_mac.mak")
-            elseif platform == "Linux" or platform == "FreeBSD" then
-                vim.fn.system("make -f make_unix.mak")
-            end
-        end,
-    },
-    ---VIMFILER---------------------
-    "Shougo/unite.vim",
-    {
-        "Shougo/vimfiler.vim",
-        keys = {
-            {"<leader>e", ":VimFilerExplorer<CR>", mode = {"n"}, silent = true, desc = "Open file browser"},
-        },
-        config = function()
-            vim.g.vimfiler_as_default_explorer = 1
-            vim.g.vimfiler_expand_jump_to_first_child = 0
-
-            vim.g.vimfiler_tree_leaf_icon = vim.fn.nr2char(0x1F341)
-            vim.g.vimfiler_tree_opened_icon = vim.fn.nr2char(0x1F5C1)
-            vim.g.vimfiler_tree_closed_icon = vim.fn.nr2char(0x1F5C0)
-            vim.g.vimfiler_file_icon = vim.fn.nr2char(0x1F5B9)
-            vim.g.vimfiler_readonly_file_icon = vim.fn.nr2char(0x1F512)
-
-            vim.api.nvim_call_function("vimfiler#custom#profile", {
-                "default", "context", {
-                    safe = 0,
-                    tab = 0,
-                    explorer = 1,
-                    split = 1,
-                    winminwidth = 300,
-                    ['edit-action'] = "right",
-                }
-            })
-            vim.api.nvim_create_autocmd("FileType", {
-                pattern = "vimfiler",
-                callback = function()
-                    vim.keymap.set("n", "<CR>", "<Cmd>lua require('vimfiler').smart_cursor_map(vimfiler_expand_tree, vimfiler_edit_file)<CR>", { buffer = true, silent = true, expr = true })
-                end,
-            })
-        end
-    },
-
     -- FloatTerm
     "tpope/vim-dispatch",
     {
         "voldikss/vim-floaterm",
         lazy = false,
         keys = {
-            { "<leader><F7>", ":FloatermNew! cd %:h:p<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm New" },
-            { "<leader><F8>", ":FloatermPrev<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm Prev" },
-            { "<leader><F9>", ":FloatermNext<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm Next" },
-            { "<leader><F11>", ":FloatermKill<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm Kill" },
-            { "<leader><F12>", ":FloatermToggle<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm Toggle" },
+            -- <Cmd> mappings run the command in both normal and terminal mode
+            -- without needing to leave terminal mode first
+            { "<leader><F7>", "<Cmd>FloatermNew! cd %:h:p<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm New" },
+            { "<leader><F8>", "<Cmd>FloatermPrev<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm Prev" },
+            { "<leader><F9>", "<Cmd>FloatermNext<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm Next" },
+            { "<leader><F11>", "<Cmd>FloatermKill<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm Kill" },
+            { "<leader><F12>", "<Cmd>FloatermToggle<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm Toggle" },
         },
         cmd = {
         	"FloatermNew",
         	"FloatermToggle",
         },
-
-        config = function()
-        -- Terminal mode keymaps need a special treatment:
-        vim.keymap.set("t", "<leader><F7>", "<C-\\><C-n>:FloatermNew<CR>", { silent = true, desc = "Floaterm New" })
-        vim.keymap.set("t", "<leader><F8>", "<C-\\><C-n>:FloatermPrev<CR>", { silent = true, desc = "Floaterm Prev" })
-        vim.keymap.set("t", "<leader><F9>", "<C-\\><C-n>:FloatermNext<CR>", { silent = true, desc = "Floaterm Next" })
-        vim.keymap.set("t", "<leader><F11>", "<C-\\><C-n>:FloatermKill<CR>", { silent = true, desc = "Floaterm Kill" })
-        vim.keymap.set("t", "<leader><F12>", "<C-\\><C-n>:FloatermToggle<CR>", { silent = true, desc = "Floaterm Toggle" })
-        end,
     },
 
     --BBye ------------------------
@@ -105,41 +50,21 @@ return {
     },
 
     --LSP  ------------------------
-    'neovim/nvim-lspconfig', -- Required
+    'neovim/nvim-lspconfig',
     {
-        'williamboman/mason.nvim', -- Optional
+        'mason-org/mason.nvim',
+        dependencies = {
+            'mason-org/mason-lspconfig.nvim',
+        },
         config = function()
             require("mason").setup({})
-            require("cmp_nvim_lsp").setup({
-                ensure_installed = {"clangd"},
-            })
-            vim.cmd("MasonUpdate")
-            local capabilities = require("cmp_nvim_lsp").default_capabilities()
-            vim.lsp.config('clangd', {
-            	capabilities = capabilities,
-            	filetypes = {"c", "cpp", "cc", "ixx", "cppm", "h", "hpp", "inl"},
-            	cmd = {
-            		"clangd",
-            		"--background-index",
-            		"--clang-tidy",
-            		"--completion-style=detailed",
-            		"--experimental-modules-support",
-				},
-                init_options = {
-                    fallbackFlags = { '-std=c++23' },
-                },
-            });
-            vim.lsp.config('csharp-language-server', {
-            	capabilities = capabilities,
-            	filetypes = {"cs"},
+            require("mason-lspconfig").setup({
+                ensure_installed = { "clangd" },
+                -- Server configs and vim.lsp.enable() live in lua/config/lsp.lua
+                automatic_enable = false,
             })
         end,
-        dependencies = {
-            'williamboman/mason-lspconfig.nvim',
-    		'hrsh7th/cmp-nvim-lsp',
-        },
     },
-    'williamboman/mason-lspconfig.nvim', -- optional
     --CMake-------------------------
     {
     	'Civitasv/cmake-tools.nvim',
@@ -220,33 +145,103 @@ return {
     "hrsh7th/cmp-nvim-lsp",
     "hrsh7th/cmp-buffer",
     "hrsh7th/cmp-path",
-    --'saadparwaiz1/cmp_luasnip ",
+    "saadparwaiz1/cmp_luasnip",
     "hrsh7th/cmp-nvim-lua",
 
     --Snippets----------------------
     'L3MON4D3/LuaSnip',
     --'rafamadriz/friendly-snippets',
-    {'VonHeikemen/lsp-zero.nvim', branch = 'v1.x'},
-  
+
     --Telescope---------------------
+    -- Note: the rg and fd binaries come from the system (scoop), not from plugins
     'nvim-lua/plenary.nvim',
     {
         'nvim-telescope/telescope.nvim',
-        branch = '0.1.x',
+        dependencies = {
+            'nvim-lua/plenary.nvim',
+            {
+                -- Native C sorter, replaces the slow Lua fuzzy matcher
+                'nvim-telescope/telescope-fzf-native.nvim',
+                build = 'cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release && cmake --install build --prefix build',
+            },
+        },
         keys   = {
             {"<C-K>f", ":Telescope live_grep<CR>", desc = "Global grep"},
             {"<C-K>g", ":Telescope grep_string<CR>", desc = "Grep under cursor"},
             {"<C-K>t", ":Telescope find_files<CR>", desc  = "Global file search"},
             {"<C-K>b", ":Telescope buffers<CR>", desc     = "Global buffer search"},
         },
+        config = function()
+            local telescope = require('telescope')
+            telescope.setup({
+                defaults = {
+                    vimgrep_arguments = {
+                        'rg',
+                        '--color=never',
+                        '--no-heading',
+                        '--with-filename',
+                        '--line-number',
+                        '--column',
+                        '--smart-case',
+                        '--trim',
+                    },
+                    preview = {
+                        filesize_limit = 1, -- MB; skip previews of huge files
+                    },
+                },
+                pickers = {
+                    grep_string = {
+                        word_match = '-w', -- Whole-word match for the word under cursor
+                    },
+                },
+            })
+            telescope.load_extension('fzf')
+        end,
     },
-    'BurntSushi/ripgrep',
-    'sharkdp/fd',
+
+    -- Big-file guard: oversized files get filetype "bigfile", which skips
+    -- syntax, treesitter and LSP attach (servers match on filetype)
+    {
+      "folke/snacks.nvim",
+      priority = 1000,
+      lazy = false,
+      opts = {
+        bigfile = {
+          enabled = true,
+          size = 1.5 * 1024 * 1024,
+          -- Snacks' default setup, plus per-redraw features turned off.
+          -- Display-column math is O(line length), so on minified single-line
+          -- files wrap/cursorline/relativenumber make every redraw rescan the
+          -- line. Use :JsonPretty to split minified JSON into short lines.
+          setup = function(ctx)
+            if vim.fn.exists(":NoMatchParen") ~= 0 then
+              vim.cmd([[NoMatchParen]])
+            end
+            Snacks.util.wo(0, {
+              foldmethod = "manual",
+              statuscolumn = "",
+              conceallevel = 0,
+              wrap = false,
+              cursorline = false,
+              relativenumber = false,
+              list = false,
+            })
+            vim.b.completion = false
+            vim.b.minianimate_disable = true
+            vim.schedule(function()
+              if vim.api.nvim_buf_is_valid(ctx.buf) then
+                vim.bo[ctx.buf].syntax = ctx.ft
+              end
+            end)
+          end,
+        },
+      },
+    },
 
     {
       "mikavilpas/yazi.nvim",
       event = "VeryLazy",
-      dependencies = { "folke/snacks.nvim", lazy = true },
+      dependencies = { "folke/snacks.nvim" },
       keys = {
         -- 👇 in this section, choose your own keymappings!
         {
@@ -254,6 +249,12 @@ return {
           mode = { "n", "v" },
           "<cmd>Yazi<cr>",
           desc = "Open yazi at the current file",
+        },
+        {
+          -- Old vimfiler explorer binding, kept for muscle memory
+          "<leader>e",
+          "<cmd>Yazi<cr>",
+          desc = "Open file browser",
         },
         {
           -- Open in the current working directory
@@ -286,7 +287,9 @@ return {
     {
         'junegunn/vim-easy-align',
         keys = {
-            {"<Enter>", "<Plug>(EasyAlign)", mode = {"n", "v"}, desc = "Align code to delimiter"},
+            -- No normal-mode <Enter>: it would shadow "jump to entry" in quickfix
+            {"ga", "<Plug>(EasyAlign)", mode = {"n"}, desc = "Align code to delimiter"},
+            {"<Enter>", "<Plug>(EasyAlign)", mode = {"x"}, desc = "Align code to delimiter"},
         },
         lazy = true,
     },
@@ -357,7 +360,6 @@ return {
 	{
         "allaman/emoji.nvim",
         lazy = false,
-        version = "1.0.0", -- optionally pin to a tag
         dependencies = {
             -- util for handling paths
             "nvim-lua/plenary.nvim",
