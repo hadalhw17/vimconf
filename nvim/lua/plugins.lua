@@ -19,7 +19,12 @@ return {
                 group = vim.api.nvim_create_augroup('TreesitterStart', { clear = true }),
                 pattern = { 'c', 'cpp', 'cs', 'lua' },
                 callback = function()
-                    pcall(vim.treesitter.start)
+                    if pcall(vim.treesitter.start) then
+                        -- Structural folds where a parser runs; other buffers
+                        -- keep the manual foldmethod from .vimrc
+                        vim.wo.foldmethod = 'expr'
+                        vim.wo.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
+                    end
                 end,
             })
         end,
@@ -32,47 +37,14 @@ return {
     },
 
 	{
-		"kyazdani42/nvim-web-devicons",
+		"nvim-tree/nvim-web-devicons",
 		lazy = false,
 	},
     -------UNICODE---------
     "chrisbra/unicode.vim",
-    ------CURSOR WORD------
-    {
-        "xiyaowong/nvim-cursorword",
-        config = function()
-            vim.g.cursorword_disable_at_startup = true
-            vim.g.cursorword_min_width = 1
-            vim.g.cursorword_max_width = 50
-        end
-    },
 
-    -- FloatTerm
+    -- Async build/test runner (:Make used by Build()/Rebuild() in .vimrc)
     "tpope/vim-dispatch",
-    {
-        "voldikss/vim-floaterm",
-        lazy = false,
-        keys = {
-            -- <Cmd> mappings run the command in both normal and terminal mode
-            -- without needing to leave terminal mode first
-            { "<leader><F7>", "<Cmd>FloatermNew! cd %:h:p<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm New" },
-            { "<leader><F8>", "<Cmd>FloatermPrev<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm Prev" },
-            { "<leader><F9>", "<Cmd>FloatermNext<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm Next" },
-            { "<leader><F11>", "<Cmd>FloatermKill<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm Kill" },
-            { "<leader><F12>", "<Cmd>FloatermToggle<CR>", mode = { "n", "t" }, silent = true, desc = "Floaterm Toggle" },
-        },
-        cmd = {
-        	"FloatermNew",
-        	"FloatermToggle",
-        },
-    },
-
-    --BBye ------------------------
-    {
-        'moll/vim-bbye', keys = {
-            {"<C-K>k", ":Bdelete!<CR>", desc = "Delete buffers without changing layout", silent = true,},
-        },
-    },
 
     --LSP  ------------------------
     'neovim/nvim-lspconfig',
@@ -166,16 +138,39 @@ return {
 
 
     --Autocompletion---------------
-    "hrsh7th/nvim-cmp",
-    "hrsh7th/cmp-nvim-lsp",
-    "hrsh7th/cmp-buffer",
-    "hrsh7th/cmp-path",
-    "saadparwaiz1/cmp_luasnip",
-    "hrsh7th/cmp-nvim-lua",
-
-    --Snippets----------------------
-    'L3MON4D3/LuaSnip',
-    --'rafamadriz/friendly-snippets',
+    {
+        'saghen/blink.cmp',
+        -- A version tag makes blink download the prebuilt Rust fuzzy matcher
+        -- instead of requiring a cargo build
+        version = '1.*',
+        opts = {
+            -- Gated on the same flag the <F2> toggle flips (see config/lsp.lua)
+            enabled = function()
+                return vim.g.nvimCmpEnabled
+            end,
+            keymap = {
+                preset = 'enter',
+                ['<Tab>'] = { 'select_next', 'snippet_forward', 'fallback' },
+                ['<S-Tab>'] = { 'select_prev', 'snippet_backward', 'fallback' },
+                ['<C-b>'] = { 'scroll_documentation_up', 'fallback' },
+                ['<C-f>'] = { 'scroll_documentation_down', 'fallback' },
+            },
+            completion = {
+                list = {
+                    -- <CR> only accepts an item you explicitly navigated to
+                    selection = { preselect = false, auto_insert = true },
+                },
+                menu = { border = 'rounded' },
+                documentation = {
+                    auto_show = true,
+                    window = { border = 'rounded' },
+                },
+            },
+            sources = {
+                default = { 'lsp', 'path', 'snippets', 'buffer' },
+            },
+        },
+    },
 
     --Telescope---------------------
     -- Note: the rg and fd binaries come from the system (scoop), not from plugins
@@ -232,7 +227,13 @@ return {
       "folke/snacks.nvim",
       priority = 1000,
       lazy = false,
+      keys = {
+        { "<leader><F12>", function() Snacks.terminal.toggle() end, mode = { "n", "t" }, desc = "Toggle terminal" },
+        { "<leader><F7>", function() Snacks.terminal.toggle(nil, { cwd = vim.fn.expand("%:p:h") }) end, desc = "Terminal in file's dir" },
+        { "<C-K>k", function() Snacks.bufdelete() end, desc = "Delete buffer, keep layout" },
+      },
       opts = {
+        words = { enabled = true },
         bigfile = {
           enabled = true,
           size = 1.5 * 1024 * 1024,
@@ -332,14 +333,15 @@ return {
     },
 
     --Code aligning------------------
+    -- mini.align is part of mini.nvim, which is already installed as a
+    -- render-markdown dependency; ga/gA in normal and visual mode
     {
-        'junegunn/vim-easy-align',
-        keys = {
-            -- No normal-mode <Enter>: it would shadow "jump to entry" in quickfix
-            {"ga", "<Plug>(EasyAlign)", mode = {"n"}, desc = "Align code to delimiter"},
-            {"<Enter>", "<Plug>(EasyAlign)", mode = {"x"}, desc = "Align code to delimiter"},
-        },
-        lazy = true,
+        'nvim-mini/mini.nvim',
+        config = function()
+            require('mini.align').setup({})
+            -- Preserve the old visual-mode <Enter> alignment habit
+            vim.keymap.set('x', '<Enter>', 'ga', { remap = true, desc = 'Align code to delimiter' })
+        end,
     },
     -- Statusline
     {
@@ -353,6 +355,29 @@ return {
 	'sindrets/diffview.nvim',
 
 	'tpope/vim-fugitive',
+
+	-- Git hunk signs, navigation and staging
+	{
+		'lewis6991/gitsigns.nvim',
+		opts = {
+			on_attach = function(bufnr)
+				local gs = require('gitsigns')
+				local function map(mode, l, r, desc)
+					vim.keymap.set(mode, l, r, { buffer = bufnr, desc = desc })
+				end
+				map('n', ']c', function()
+					if vim.wo.diff then vim.cmd.normal({ ']c', bang = true }) else gs.nav_hunk('next') end
+				end, 'Next change')
+				map('n', '[c', function()
+					if vim.wo.diff then vim.cmd.normal({ '[c', bang = true }) else gs.nav_hunk('prev') end
+				end, 'Prev change')
+				map('n', '<leader>hs', gs.stage_hunk, 'Stage hunk')
+				map('n', '<leader>hr', gs.reset_hunk, 'Reset hunk')
+				map('n', '<leader>hp', gs.preview_hunk, 'Preview hunk')
+				map('n', '<leader>hb', function() gs.blame_line({ full = true }) end, 'Blame line')
+			end,
+		},
+	},
 
 	{
 		"pwntester/octo.nvim",
@@ -401,23 +426,43 @@ return {
 		},
 	},
 
-	'sbdchd/neoformat',
+	-- Formatting, on demand only (<leader>f); falls back to LSP (clangd) when
+	-- no formatter binary is available for the filetype
+	{
+		'stevearc/conform.nvim',
+		keys = {
+			{
+				'<leader>f',
+				function() require('conform').format({ async = true, lsp_format = 'fallback' }) end,
+				mode = { 'n', 'x' },
+				desc = 'Format buffer or range',
+			},
+		},
+		opts = {
+			formatters_by_ft = {
+				c = { 'clang-format' },
+				cpp = { 'clang-format' },
+				cs = { 'clang-format' },
+				json = { 'jq' },
+			},
+		},
+	},
+
 	{
         "allaman/emoji.nvim",
         lazy = false,
         dependencies = {
             -- util for handling paths
             "nvim-lua/plenary.nvim",
-            -- optional for nvim-cmp integration
-            "hrsh7th/nvim-cmp",
 			-- optional for telescope integration
 			"nvim-telescope/telescope.nvim",
 			-- optional for fzf-lua integration via vim.ui.select
 			"ibhagwan/fzf-lua",
 		},
 		opts = {
-			-- default is false, also needed for blink.cmp integration!
-			enable_cmp_integration = true,
+			-- cmp integration off: completion moved to blink.cmp; emoji picking
+			-- stays available via <C-k>e (telescope)
+			enable_cmp_integration = false,
 		},
 		config = function(_, opts)
 			require("emoji").setup(opts)

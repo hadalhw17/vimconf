@@ -1,67 +1,17 @@
--- LSP servers, diagnostics and completion. Plugin specs live in lua/plugins.lua;
--- this file is required from .vimrc right after lazy.nvim is set up.
-
-local cmp = require("cmp")
-local luasnip = require("luasnip")
+-- LSP servers and diagnostics. Plugin specs live in lua/plugins.lua; completion
+-- is blink.cmp, configured in its plugin spec and gated on g:nvimCmpEnabled.
+-- This file is required from .vimrc right after lazy.nvim is set up.
 
 -- -Completion-------------------------------------------------------------------
+-- 'completeopt' only affects native ins-completion (the <Tab>/pumvisible maps
+-- in .vimrc); blink.cmp manages its own menu.
 vim.o.completeopt = "menu,menuone,noselect"
 
--- cmp is configured once and gated on this flag, so <F2> can toggle it
--- without re-running the whole setup.
+-- Completion off until toggled on with <F2>
 vim.g.nvimCmpEnabled = false
 
-cmp.setup({
-	enabled = function()
-		return vim.g.nvimCmpEnabled
-	end,
-	sources = {
-		{ name = "nvim_lsp" },
-		{ name = "luasnip" },
-		{ name = "buffer" },
-		{ name = "path" },
-		{ name = "emoji" },
-	},
-	snippet = {
-		expand = function(args)
-			luasnip.lsp_expand(args.body)
-		end,
-	},
-	window = {
-		completion = cmp.config.window.bordered(),
-		documentation = cmp.config.window.bordered(),
-	},
-	mapping = cmp.mapping.preset.insert({
-		["<C-b>"] = cmp.mapping.scroll_docs(-4),
-		["<C-f>"] = cmp.mapping.scroll_docs(4),
-		["<C-Space>"] = cmp.mapping.complete(), -- Manually trigger completion
-		["<CR>"] = cmp.mapping.confirm({ select = false }), -- Accept selected completion
-
-		-- Use <Tab> and <S-Tab> to select the next/previous item
-		["<Tab>"] = cmp.mapping(function(fallback)
-			if cmp.visible() then
-				cmp.select_next_item()
-			elseif luasnip.expand_or_jumpable() then
-				luasnip.expand_or_jump()
-			else
-				fallback()
-			end
-		end, { "i", "s" }),
-
-		["<S-Tab>"] = cmp.mapping(function(fallback)
-			if cmp.visible() then
-				cmp.select_prev_item()
-			elseif luasnip.jumpable(-1) then
-				luasnip.jump(-1)
-			else
-				fallback()
-			end
-		end, { "i", "s" }),
-	}),
-})
-
 -- -LSP servers------------------------------------------------------------------
-local capabilities = require("cmp_nvim_lsp").default_capabilities()
+local capabilities = require("blink.cmp").get_lsp_capabilities()
 local servers = { "clangd", "csharp-language-server" }
 
 vim.lsp.config("clangd", {
@@ -104,6 +54,7 @@ vim.diagnostic.config({
 -- -Keymaps and toggles-----------------------------------------------------------
 vim.keymap.set("n", "gd", vim.lsp.buf.definition, { desc = "Go to definition" })
 vim.keymap.set("n", "gl", vim.diagnostic.open_float, { desc = "Show line diagnostics" })
+vim.keymap.set("n", "<leader>q", vim.diagnostic.setqflist, { desc = "All diagnostics to quickfix" })
 vim.keymap.set("n", "<A-o>", "<Cmd>LspClangdSwitchSourceHeader<CR>", { desc = "Switch source/header" })
 
 vim.keymap.set("n", "<F2>", function()

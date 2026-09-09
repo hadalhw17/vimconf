@@ -15,12 +15,11 @@ execute 'source' fnameescape(g:plugin_file)
   set encoding=UTF-8 
   set title                   "We can change the tile of the window
   set noswapfile							"Turn off swap file generation
+  set undofile                "Persistent undo across sessions
   set clipboard=unnamed				"Use the OS clipboard for copying/pasting
   set nu                      "Show file numbers
   set relativenumber
 
-  set foldmethod=manual
-  set foldlevelstart=99
   " set expandtab               "Never use hard tabs
   set nojoinspaces            "Avoid double spaces when joining lines
   set shiftwidth=4            "One tab = 2 spaces (auto indent)
@@ -43,7 +42,6 @@ execute 'source' fnameescape(g:plugin_file)
   lua require("config.lsp")
   lua require("config.ui")
 
-  hi default CursorWord cterm=underline gui=underline
 
   " Leader
   let mapleader = "\<Space>"
@@ -122,7 +120,6 @@ execute 'source' fnameescape(g:plugin_file)
   nmap <silent> <leader>sv :so $MYVIMRC<CR>
 
   " Search hotkeys
-  nmap <leader>gf :vimgrep /<c-r>=expand("<cword>")<cr>/../*/*<CR> /<c-r>=expand("<cword>")<cr><CR><s-n>
   nmap <leader>n :cnext<CR>
 
   " Toggle tabs and EOL
@@ -170,58 +167,24 @@ execute 'source' fnameescape(g:plugin_file)
   inoremap <expr> <S-Tab> pumvisible() ? "\<C-p>" : "\<S-Tab>"
 
 " -Folding---------------------------------------------------------------------
-  " https://coderwall.com/p/usd_cw/a-pretty-vim-foldtext-function
+  " Buffers with a treesitter parser get structural expr folds (see the
+  " nvim-treesitter spec in plugins.lua); everything else stays manual.
+  " Fold summary lines use Neovim's native syntax-highlighted foldtext.
   set foldmethod=manual
   set foldlevelstart=99
-  "set fillchars=fold:\  
-
-  set foldtext=FoldText()
-  function! FoldText()
-    let l:lpadding = &fdc
-    redir => l:signs
-    execute 'silent sign place buffer='.bufnr('%')
-    redir End
-    let l:lpadding += l:signs =~ 'id=' ? 2 : 0
-
-    if exists("+relativenumber")
-      if (&number)
-        let l:lpadding += max([&numberwidth, strlen(line('$'))]) + 1
-      elseif (&relativenumber)
-        let l:lpadding += max([&numberwidth, strlen(v:foldstart - line('w0')), strlen(line('w$') - v:foldstart), strlen(v:foldstart)]) + 1
-      endif
-    else
-      if (&number)
-        let l:lpadding += max([&numberwidth, strlen(line('$'))]) + 1
-      endif
-    endif
-    " expand tabs
-    let l:start = substitute(getline(v:foldstart), '\t', repeat(' ', &tabstop), 'g')
-    let l:end = substitute(substitute(getline(v:foldend), '\t', repeat(' ', &tabstop), 'g'), '^\s*', '', 'g')
-
-    let l:info = ' (' . (v:foldend - v:foldstart) . ')'
-    let l:infolen = strlen(substitute(l:info, '.', 'x', 'g'))
-    let l:width = winwidth(0) - l:lpadding - l:infolen
-
-    let l:separator = ' … '
-    let l:separatorlen = strlen(substitute(l:separator, '.', 'x', 'g'))
-    let l:start = strpart(l:start , 0, l:width - strlen(substitute(l:end, '.', 'x', 'g')) - l:separatorlen)
-    let l:text = l:start . ' … ' . l:end
-
-    return l:text . repeat(' ', l:width - strlen(substitute(l:text, ".", "x", "g"))) . l:info
-  endfunction
 
 " -Building--------------------------------------------------------------------
   compiler msvc
-  
+  " Filter huge quickfix lists with :Cfilter /pattern/
+  packadd cfilter
+
+  " Builds run async via vim-dispatch (:Make); quickfix opens when they finish
   function! Build()
-    :silent make clean
-    :silent make
-    :cw
-    :redraw!
+    :Make
   endfunction
-  
+
   function! Clean()
-    :silent make clean
+    :Make clean
   endfunction
   
   function! SetCMakeMakeprg()
@@ -236,13 +199,8 @@ execute 'source' fnameescape(g:plugin_file)
     set makeprg=make
   endfunction
   
-  function! Clean()
-    :silent make clean
-  endfunction
-  
   function! Rebuild()
-    :silent call Clean()
-    :silent call Build()
+    :Make clean all
   endfunction
   
   function! ShowBuildOutput()
