@@ -9,6 +9,9 @@ map("n", "<C-K>", "<C-W><C-K>")
 map("n", "<C-L>", "<C-W><C-L>")
 map("n", "<C-H>", "<C-W><C-H>")
 
+map("n", "+", "<C-W>+", { remap = true })
+map("n", "-", "<C-W>-", { remap = true })
+
 -- Use Q for formatting the current paragraph (or selection)
 map("v", "Q", "gq", { remap = true })
 map("n", "Q", "gqap", { remap = true })
@@ -18,6 +21,9 @@ map("n", "<leader>ev", "<Cmd>vsp $MYVIMRC<CR>", { silent = true, desc = "Edit in
 map("n", "<leader>sv", function()
 	require("config.autocmds").reload_config()
 end, { silent = true, desc = "Reload config" })
+
+-- Exit terminal mode
+map("t", "<leader><ESC>", "<C-\\><C-n>", { remap = true })
 
 -- Quickfix
 map("n", "<leader>n", "<Cmd>cnext<CR>", { desc = "Next quickfix entry" })

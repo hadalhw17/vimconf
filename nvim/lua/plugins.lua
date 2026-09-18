@@ -352,7 +352,18 @@ return {
 
     'https://github.com/tpope/vim-characterize.git',
 
-	'sindrets/diffview.nvim',
+	{
+		'sindrets/diffview.nvim',
+		config = function()
+			require('diffview').setup({
+				view = {
+					merge_tool = {
+						layout = "diff3_mixed",
+					},
+				},
+			})
+		end,
+	},
 
 	'tpope/vim-fugitive',
 

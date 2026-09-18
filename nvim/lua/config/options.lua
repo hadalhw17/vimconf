@@ -67,3 +67,12 @@ o.clipboard = "unnamed"
 -- Fold summary lines use Neovim's native syntax-highlighted foldtext.
 o.foldmethod = "manual"
 o.foldlevelstart = 99
+
+if vim.fn.has("win32") == 1 then
+  vim.opt.shell = "pwsh"
+  vim.opt.shellcmdflag = "-NoLogo -NoProfile -ExecutionPolicy RemoteSigned -Command"
+  vim.opt.shellredir = "-RedirectStandardOutput %s -NoNewWindow -Wait"
+  vim.opt.shellpipe = "2>&1 | Out-File -Encoding UTF8 %s; exit $LastExitCode"
+  vim.opt.shellquote = ""
+  vim.opt.shellxquote = ""
+end
